@@ -17,17 +17,19 @@
 <link rel="icon" href="icon-192.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
   :root{
     --bg:#121214;
     --panel:#1c1c20;
+    --panel-2:#232327;
     --ring:#2f4858;
     --accent:#f0761f;
     --accent-2:#d94f1e;
     --cream:#f2ede4;
     --yellow:#f0c808;
+    --muted:rgba(242,237,228,.55);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{
@@ -43,123 +45,150 @@
   /* --- Header --- */
   header{
     display:flex; align-items:center; justify-content:space-between;
-    padding:calc(env(safe-area-inset-top) + 14px) 20px 12px;
+    padding:calc(env(safe-area-inset-top) + 14px) 20px 10px;
     z-index:5;
   }
   .logo{
-    display:flex; align-items:center; gap:10px;
+    display:flex; align-items:center; gap:9px;
     font-family:'Bebas Neue', sans-serif;
-    font-size:26px; letter-spacing:4px;
+    font-size:25px; letter-spacing:4px;
   }
   .logo .dot{
-    width:12px; height:12px; border-radius:50%;
+    width:11px; height:11px; border-radius:50%;
     background:var(--accent); box-shadow:0 0 10px var(--accent);
   }
   .rec{
     display:flex; align-items:center; gap:6px;
-    font-size:11px; letter-spacing:2px; color:var(--yellow);
+    font-size:10px; letter-spacing:2px; color:var(--yellow);
     opacity:0; transition:opacity .2s;
   }
   .rec.show{opacity:1;}
-  .rec .blip{width:7px;height:7px;border-radius:50%;background:var(--yellow); animation:blink 1s infinite;}
-  @keyframes blink{50%{opacity:.2;}}
+  .rec .blip{width:6px;height:6px;border-radius:50%;background:var(--yellow); animation:blink 1.2s infinite;}
+  @keyframes blink{50%{opacity:.15;}}
 
   /* --- Camera stage --- */
   .stage{
     position:relative; flex:1; margin:0 14px;
-    border-radius:26px; overflow:hidden;
+    border-radius:28px; overflow:hidden;
     background:#000;
     border:1px solid rgba(242,237,228,.08);
+    isolation:isolate;
   }
   video, #shotImg{
     width:100%; height:100%; object-fit:cover;
-    transform:scaleX(-1);
     display:block;
+    /* isolate filter onto its own GPU layer so switching doesn't repaint the whole page */
+    will-change:filter;
+    transform:translateZ(0) scaleX(1);
+    backface-visibility:hidden;
+    transition:filter .18s ease-out;
   }
+  video.mirrored, #shotImg.mirrored{ transform:translateZ(0) scaleX(-1); }
   #shotImg{position:absolute; inset:0; display:none;}
-  .grid-overlay{
+
+  .vignette{
     position:absolute; inset:0; pointer-events:none;
-    background:
-      linear-gradient(to right, transparent 33%, rgba(242,237,228,.08) 33%, rgba(242,237,228,.08) calc(33% + 1px), transparent calc(33% + 1px)),
-      linear-gradient(to right, transparent 66%, rgba(242,237,228,.08) 66%, rgba(242,237,228,.08) calc(66% + 1px), transparent calc(66% + 1px)),
-      linear-gradient(to bottom, transparent 33%, rgba(242,237,228,.08) 33%, rgba(242,237,228,.08) calc(33% + 1px), transparent calc(33% + 1px)),
-      linear-gradient(to bottom, transparent 66%, rgba(242,237,228,.08) 66%, rgba(242,237,228,.08) calc(66% + 1px), transparent calc(66% + 1px));
+    box-shadow:inset 0 0 90px rgba(0,0,0,.55);
   }
-  .corner{position:absolute; width:22px; height:22px; border-color:var(--cream); opacity:.5;}
+  .corner{position:absolute; width:20px; height:20px; border-color:var(--cream); opacity:.45; pointer-events:none;}
   .corner.tl{top:12px; left:12px; border-top:2px solid; border-left:2px solid; border-radius:6px 0 0 0;}
   .corner.tr{top:12px; right:12px; border-top:2px solid; border-right:2px solid; border-radius:0 6px 0 0;}
   .corner.bl{bottom:12px; left:12px; border-bottom:2px solid; border-left:2px solid; border-radius:0 0 0 6px;}
   .corner.br{bottom:12px; right:12px; border-bottom:2px solid; border-right:2px solid; border-radius:0 0 6px 0;}
 
   .hint{
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    text-align:center; padding:30px; font-size:13px; line-height:1.6; color:rgba(242,237,228,.7);
+    position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    text-align:center; padding:34px; font-size:12.5px; line-height:1.7; color:rgba(242,237,228,.72);
+    background:rgba(0,0,0,.35); backdrop-filter:blur(2px);
   }
+  .spinner{
+    width:26px; height:26px; border-radius:50%;
+    border:2.5px solid rgba(242,237,228,.2); border-top-color:var(--accent);
+    animation:spin .8s linear infinite; margin:0 auto 14px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* --- Filter name readout --- */
+  .filter-readout{
+    text-align:center; padding-top:14px;
+    font-family:'Bebas Neue', sans-serif; font-size:15px; letter-spacing:5px;
+    color:var(--muted);
+  }
+  .filter-readout b{ color:var(--accent); font-weight:400; }
 
   /* --- Filter strip (film reel) --- */
-  .filmstrip-wrap{
-    padding:16px 0 4px;
-  }
+  .filmstrip-wrap{ padding:8px 0 2px; }
   .filmstrip{
-    display:flex; gap:14px; overflow-x:auto; padding:6px 20px 10px;
+    display:flex; gap:14px; overflow-x:auto; padding:8px 20px 10px;
     scroll-snap-type:x proximity;
   }
   .filmstrip::-webkit-scrollbar{display:none;}
   .frame{
     scroll-snap-align:center;
-    flex:0 0 auto; width:58px; text-align:center;
-    display:flex; flex-direction:column; align-items:center; gap:6px;
-    cursor:pointer; opacity:.6; transition:opacity .15s, transform .15s;
+    flex:0 0 auto; width:56px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:7px;
+    cursor:pointer; opacity:.55; transition:opacity .15s, transform .15s;
   }
   .frame.active{opacity:1; transform:translateY(-4px);}
   .frame .swatch{
-    width:50px; height:50px; border-radius:50%;
+    width:48px; height:48px; border-radius:50%;
     border:2px solid var(--ring);
-    background:linear-gradient(135deg,#888,#333);
     position:relative;
   }
-  .frame.active .swatch{border-color:var(--accent); box-shadow:0 0 0 3px rgba(240,118,31,.2);}
-  .frame span{font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--cream);}
+  .frame.active .swatch{border-color:var(--accent); box-shadow:0 0 0 3px rgba(240,118,31,.18);}
+  .frame span{font-size:8.5px; letter-spacing:1px; text-transform:uppercase; color:var(--cream);}
 
-  /* per-filter swatch previews */
   .f-none .swatch{background:linear-gradient(135deg,#c9c9c9,#4a4a4a);}
-  .f-bw .swatch{background:linear-gradient(135deg,#eee,#222); filter:grayscale(1);}
+  .f-bw .swatch{background:linear-gradient(135deg,#eee,#222);}
+  .f-noir .swatch{background:linear-gradient(135deg,#4a4a4a,#000);}
   .f-sepia .swatch{background:linear-gradient(135deg,#d9b382,#5b3a1e);}
-  .f-noir .swatch{background:linear-gradient(135deg,#555,#000); filter:contrast(1.4) brightness(.8);}
-  .f-vivid .swatch{background:linear-gradient(135deg,#ff8a3d,#2f9e6e);}
   .f-vintage .swatch{background:linear-gradient(135deg,#e7c88a,#7a4a2a);}
+  .f-vivid .swatch{background:linear-gradient(135deg,#ff8a3d,#2f9e6e);}
   .f-neon .swatch{background:linear-gradient(135deg,#ff2fd0,#2fe0ff);}
 
   /* --- Controls --- */
   .controls{
-    display:flex; align-items:center; justify-content:center; gap:34px;
-    padding:6px 20px calc(env(safe-area-inset-bottom) + 22px);
+    display:flex; align-items:center; justify-content:center; gap:36px;
+    padding:8px 20px calc(env(safe-area-inset-bottom) + 22px);
   }
   .side-btn{
-    width:46px; height:46px; border-radius:50%;
+    width:48px; height:48px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
     background:var(--panel); border:1px solid rgba(242,237,228,.1);
-    color:var(--cream); font-size:19px;
+    color:var(--cream); transition:background .15s, transform .1s;
   }
+  .side-btn:active{ transform:scale(.92); background:var(--panel-2); }
+  .side-btn svg{ width:20px; height:20px; }
+  .side-btn.hidden{ visibility:hidden; }
+
   .shutter{
-    width:76px; height:76px; border-radius:50%;
+    width:74px; height:74px; border-radius:50%;
     background:var(--cream);
-    border:5px solid rgba(242,237,228,.25);
+    border:5px solid rgba(242,237,228,.22);
     position:relative;
+    transition:transform .1s;
   }
   .shutter::after{
     content:""; position:absolute; inset:6px; border-radius:50%;
     background:var(--accent);
-    transition:transform .1s;
+    transition:transform .12s, background .12s;
   }
+  .shutter:active{ transform:scale(.96); }
   .shutter:active::after{transform:scale(.85);}
   .shutter.retake::after{background:var(--ring);}
 
   #canvas{display:none;}
+  a#dl{ position:absolute; opacity:0; pointer-events:none; }
 
-  a#dl{
-    position:absolute; opacity:0; pointer-events:none;
+  .toast{
+    position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom) + 130px);
+    transform:translate(-50%, 10px); opacity:0;
+    background:rgba(28,28,32,.92); border:1px solid rgba(242,237,228,.12);
+    padding:9px 16px; border-radius:999px; font-size:11px; letter-spacing:1px;
+    color:var(--cream); pointer-events:none; transition:opacity .2s, transform .2s;
+    white-space:nowrap;
   }
+  .toast.show{ opacity:1; transform:translate(-50%, 0); }
 </style>
 </head>
 <body>
@@ -173,30 +202,42 @@
   <div class="stage" id="stage">
     <video id="video" autoplay playsinline muted></video>
     <img id="shotImg" alt="captura">
-    <div class="grid-overlay"></div>
+    <div class="vignette"></div>
     <div class="corner tl"></div><div class="corner tr"></div>
     <div class="corner bl"></div><div class="corner br"></div>
-    <div class="hint" id="hint">apasă „permite” pentru acces la cameră ↻</div>
+    <div class="hint" id="hint"><div><div class="spinner" id="spinner"></div><span id="hintText">se deschide camera…</span></div></div>
   </div>
+
+  <div class="filter-readout">FILTRU · <b id="filterName">NORMAL</b></div>
 
   <div class="filmstrip-wrap">
     <div class="filmstrip" id="filmstrip">
-      <div class="frame f-none active" data-filter="none"><div class="swatch"></div><span>Normal</span></div>
-      <div class="frame f-bw" data-filter="grayscale(1) contrast(1.05)"><div class="swatch"></div><span>Alb-negru</span></div>
-      <div class="frame f-noir" data-filter="grayscale(1) contrast(1.5) brightness(.85)"><div class="swatch"></div><span>Noir</span></div>
-      <div class="frame f-sepia" data-filter="sepia(.75) contrast(1.05) saturate(1.2)"><div class="swatch"></div><span>Sepia</span></div>
-      <div class="frame f-vintage" data-filter="sepia(.4) saturate(1.4) contrast(.9) brightness(1.05) hue-rotate(-8deg)"><div class="swatch"></div><span>Vintage</span></div>
-      <div class="frame f-vivid" data-filter="saturate(1.8) contrast(1.15)"><div class="swatch"></div><span>Vivid</span></div>
-      <div class="frame f-neon" data-filter="saturate(2) contrast(1.3) hue-rotate(45deg)"><div class="swatch"></div><span>Neon</span></div>
+      <div class="frame f-none active" data-filter="none" data-name="Normal"><div class="swatch"></div><span>Normal</span></div>
+      <div class="frame f-bw" data-filter="grayscale(1) contrast(1.05)" data-name="Alb-negru"><div class="swatch"></div><span>Alb-negru</span></div>
+      <div class="frame f-noir" data-filter="grayscale(1) contrast(1.4) brightness(.88)" data-name="Noir"><div class="swatch"></div><span>Noir</span></div>
+      <div class="frame f-sepia" data-filter="sepia(.7) contrast(1.05)" data-name="Sepia"><div class="swatch"></div><span>Sepia</span></div>
+      <div class="frame f-vintage" data-filter="sepia(.35) saturate(1.3) brightness(1.05)" data-name="Vintage"><div class="swatch"></div><span>Vintage</span></div>
+      <div class="frame f-vivid" data-filter="saturate(1.6) contrast(1.1)" data-name="Vivid"><div class="swatch"></div><span>Vivid</span></div>
+      <div class="frame f-neon" data-filter="saturate(1.8) hue-rotate(45deg)" data-name="Neon"><div class="swatch"></div><span>Neon</span></div>
     </div>
   </div>
 
   <div class="controls">
-    <button class="side-btn" id="switchBtn" title="schimbă camera">⟳</button>
+    <button class="side-btn" id="switchBtn" title="schimbă camera">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+        <path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+      </svg>
+    </button>
     <div class="shutter" id="shutterBtn"></div>
-    <button class="side-btn" id="dlBtn" title="salvează" style="display:none;">⬇</button>
+    <button class="side-btn" id="dlBtn" title="salvează" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/>
+      </svg>
+    </button>
   </div>
 
+  <div class="toast" id="toast"></div>
 </div>
 
 <canvas id="canvas"></canvas>
@@ -207,77 +248,123 @@ const video = document.getElementById('video');
 const shotImg = document.getElementById('shotImg');
 const canvas = document.getElementById('canvas');
 const hint = document.getElementById('hint');
+const hintText = document.getElementById('hintText');
+const spinner = document.getElementById('spinner');
 const recLabel = document.getElementById('recLabel');
 const shutterBtn = document.getElementById('shutterBtn');
 const switchBtn = document.getElementById('switchBtn');
 const dlBtn = document.getElementById('dlBtn');
 const filmstrip = document.getElementById('filmstrip');
+const filterName = document.getElementById('filterName');
+const toast = document.getElementById('toast');
 
 let currentFilter = 'none';
 let facingMode = 'user';
 let stream = null;
 let hasShot = false;
+let filterChangeTimer = null;
 
-function applyFilter(el){ el.style.filter = currentFilter === 'none' ? 'none' : currentFilter; }
+function isMirrored(){ return facingMode === 'user'; }
+
+function updateMirrorClass(){
+  video.classList.toggle('mirrored', isMirrored());
+  shotImg.classList.toggle('mirrored', isMirrored());
+}
+
+function applyFilterTo(el){
+  el.style.filter = currentFilter === 'none' ? 'none' : currentFilter;
+}
+
+// debounced so rapid taps across the filmstrip don't stack GPU work and freeze Safari
+function setFilter(frame){
+  document.querySelectorAll('.frame').forEach(f=>f.classList.remove('active'));
+  frame.classList.add('active');
+  currentFilter = frame.dataset.filter;
+  filterName.textContent = frame.dataset.name.toUpperCase();
+
+  clearTimeout(filterChangeTimer);
+  filterChangeTimer = setTimeout(()=>{
+    applyFilterTo(hasShot ? shotImg : video);
+  }, 40);
+}
 
 filmstrip.addEventListener('click', (e)=>{
   const frame = e.target.closest('.frame');
   if(!frame) return;
-  document.querySelectorAll('.frame').forEach(f=>f.classList.remove('active'));
-  frame.classList.add('active');
-  currentFilter = frame.dataset.filter;
-  applyFilter(hasShot ? shotImg : video);
+  setFilter(frame);
 });
 
-async function startCamera(){
+function showHint(text, showSpinner){
   hint.style.display = 'flex';
-  hint.textContent = 'se deschide camera…';
+  hintText.textContent = text;
+  spinner.style.display = showSpinner ? 'block' : 'none';
+}
+function hideHint(){ hint.style.display = 'none'; }
+
+async function startCamera(){
+  showHint('se deschide camera…', true);
   try{
     if(stream) stream.getTracks().forEach(t=>t.stop());
     stream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode, width:{ideal:1280}, height:{ideal:1280} },
+      video:{
+        facingMode,
+        width:{ ideal:960 },
+        height:{ ideal:960 }
+      },
       audio:false
     });
     video.srcObject = stream;
-    hint.style.display = 'none';
+    updateMirrorClass();
+    applyFilterTo(video);
+    hideHint();
     recLabel.classList.add('show');
   }catch(err){
-    hint.style.display = 'flex';
-    hint.textContent = 'nu am acces la cameră. verifică permisiunile și că pagina rulează pe HTTPS (' + err.message + ')';
+    showHint('nu am acces la cameră. verifică permisiunile Safari și că pagina rulează pe HTTPS. (' + err.message + ')', false);
     recLabel.classList.remove('show');
   }
 }
 
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>toast.classList.remove('show'), 1400);
+}
+
 switchBtn.addEventListener('click', ()=>{
   facingMode = facingMode === 'user' ? 'environment' : 'user';
+  showToast(facingMode === 'user' ? 'Cameră față' : 'Cameră spate');
   startCamera();
 });
 
 shutterBtn.addEventListener('click', ()=>{
   if(!hasShot){
-    // capture
     const w = video.videoWidth, h = video.videoHeight;
     if(!w || !h) return;
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
     ctx.filter = currentFilter === 'none' ? 'none' : currentFilter;
-    ctx.translate(w,0); ctx.scale(-1,1); // mirror to match preview
+    if(isMirrored()){
+      ctx.translate(w,0); ctx.scale(-1,1);
+    }
     ctx.drawImage(video, 0, 0, w, h);
     shotImg.src = canvas.toDataURL('image/png');
     shotImg.style.display = 'block';
-    shotImg.style.filter = 'none'; // already baked in
+    shotImg.style.filter = 'none'; // already baked into the image
+    shotImg.classList.remove('mirrored'); // already baked into the image
     video.style.display = 'none';
     hasShot = true;
     shutterBtn.classList.add('retake');
     dlBtn.style.display = 'flex';
+    switchBtn.classList.add('hidden');
     recLabel.classList.remove('show');
   } else {
-    // retake
     shotImg.style.display = 'none';
     video.style.display = 'block';
     hasShot = false;
     shutterBtn.classList.remove('retake');
     dlBtn.style.display = 'none';
+    switchBtn.classList.remove('hidden');
     recLabel.classList.add('show');
   }
 });
@@ -287,6 +374,7 @@ dlBtn.addEventListener('click', ()=>{
   a.href = shotImg.src;
   a.download = 'osv-' + Date.now() + '.png';
   a.click();
+  showToast('Salvată');
 });
 
 startCamera();
