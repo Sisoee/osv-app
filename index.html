@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>OSV</title>
+
+<!-- iOS install support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OSV">
+<link rel="apple-touch-icon" href="icon-180.png">
+
+<!-- Android / PWA support -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#121214">
+<link rel="icon" href="icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#121214;
+    --panel:#1c1c20;
+    --ring:#2f4858;
+    --accent:#f0761f;
+    --accent-2:#d94f1e;
+    --cream:#f2ede4;
+    --yellow:#f0c808;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; height:100%; background:var(--bg);
+    font-family:'IBM Plex Mono', monospace; color:var(--cream);
+    overscroll-behavior:none; overflow:hidden;
+  }
+  #app{
+    position:fixed; inset:0;
+    display:flex; flex-direction:column;
+  }
+
+  /* --- Header --- */
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:calc(env(safe-area-inset-top) + 14px) 20px 12px;
+    z-index:5;
+  }
+  .logo{
+    display:flex; align-items:center; gap:10px;
+    font-family:'Bebas Neue', sans-serif;
+    font-size:26px; letter-spacing:4px;
+  }
+  .logo .dot{
+    width:12px; height:12px; border-radius:50%;
+    background:var(--accent); box-shadow:0 0 10px var(--accent);
+  }
+  .rec{
+    display:flex; align-items:center; gap:6px;
+    font-size:11px; letter-spacing:2px; color:var(--yellow);
+    opacity:0; transition:opacity .2s;
+  }
+  .rec.show{opacity:1;}
+  .rec .blip{width:7px;height:7px;border-radius:50%;background:var(--yellow); animation:blink 1s infinite;}
+  @keyframes blink{50%{opacity:.2;}}
+
+  /* --- Camera stage --- */
+  .stage{
+    position:relative; flex:1; margin:0 14px;
+    border-radius:26px; overflow:hidden;
+    background:#000;
+    border:1px solid rgba(242,237,228,.08);
+  }
+  video, #shotImg{
+    width:100%; height:100%; object-fit:cover;
+    transform:scaleX(-1);
+    display:block;
+  }
+  #shotImg{position:absolute; inset:0; display:none;}
+  .grid-overlay{
+    position:absolute; inset:0; pointer-events:none;
+    background:
+      linear-gradient(to right, transparent 33%, rgba(242,237,228,.08) 33%, rgba(242,237,228,.08) calc(33% + 1px), transparent calc(33% + 1px)),
+      linear-gradient(to right, transparent 66%, rgba(242,237,228,.08) 66%, rgba(242,237,228,.08) calc(66% + 1px), transparent calc(66% + 1px)),
+      linear-gradient(to bottom, transparent 33%, rgba(242,237,228,.08) 33%, rgba(242,237,228,.08) calc(33% + 1px), transparent calc(33% + 1px)),
+      linear-gradient(to bottom, transparent 66%, rgba(242,237,228,.08) 66%, rgba(242,237,228,.08) calc(66% + 1px), transparent calc(66% + 1px));
+  }
+  .corner{position:absolute; width:22px; height:22px; border-color:var(--cream); opacity:.5;}
+  .corner.tl{top:12px; left:12px; border-top:2px solid; border-left:2px solid; border-radius:6px 0 0 0;}
+  .corner.tr{top:12px; right:12px; border-top:2px solid; border-right:2px solid; border-radius:0 6px 0 0;}
+  .corner.bl{bottom:12px; left:12px; border-bottom:2px solid; border-left:2px solid; border-radius:0 0 0 6px;}
+  .corner.br{bottom:12px; right:12px; border-bottom:2px solid; border-right:2px solid; border-radius:0 0 6px 0;}
+
+  .hint{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    text-align:center; padding:30px; font-size:13px; line-height:1.6; color:rgba(242,237,228,.7);
+  }
+
+  /* --- Filter strip (film reel) --- */
+  .filmstrip-wrap{
+    padding:16px 0 4px;
+  }
+  .filmstrip{
+    display:flex; gap:14px; overflow-x:auto; padding:6px 20px 10px;
+    scroll-snap-type:x proximity;
+  }
+  .filmstrip::-webkit-scrollbar{display:none;}
+  .frame{
+    scroll-snap-align:center;
+    flex:0 0 auto; width:58px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    cursor:pointer; opacity:.6; transition:opacity .15s, transform .15s;
+  }
+  .frame.active{opacity:1; transform:translateY(-4px);}
+  .frame .swatch{
+    width:50px; height:50px; border-radius:50%;
+    border:2px solid var(--ring);
+    background:linear-gradient(135deg,#888,#333);
+    position:relative;
+  }
+  .frame.active .swatch{border-color:var(--accent); box-shadow:0 0 0 3px rgba(240,118,31,.2);}
+  .frame span{font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--cream);}
+
+  /* per-filter swatch previews */
+  .f-none .swatch{background:linear-gradient(135deg,#c9c9c9,#4a4a4a);}
+  .f-bw .swatch{background:linear-gradient(135deg,#eee,#222); filter:grayscale(1);}
+  .f-sepia .swatch{background:linear-gradient(135deg,#d9b382,#5b3a1e);}
+  .f-noir .swatch{background:linear-gradient(135deg,#555,#000); filter:contrast(1.4) brightness(.8);}
+  .f-vivid .swatch{background:linear-gradient(135deg,#ff8a3d,#2f9e6e);}
+  .f-vintage .swatch{background:linear-gradient(135deg,#e7c88a,#7a4a2a);}
+  .f-neon .swatch{background:linear-gradient(135deg,#ff2fd0,#2fe0ff);}
+
+  /* --- Controls --- */
+  .controls{
+    display:flex; align-items:center; justify-content:center; gap:34px;
+    padding:6px 20px calc(env(safe-area-inset-bottom) + 22px);
+  }
+  .side-btn{
+    width:46px; height:46px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--panel); border:1px solid rgba(242,237,228,.1);
+    color:var(--cream); font-size:19px;
+  }
+  .shutter{
+    width:76px; height:76px; border-radius:50%;
+    background:var(--cream);
+    border:5px solid rgba(242,237,228,.25);
+    position:relative;
+  }
+  .shutter::after{
+    content:""; position:absolute; inset:6px; border-radius:50%;
+    background:var(--accent);
+    transition:transform .1s;
+  }
+  .shutter:active::after{transform:scale(.85);}
+  .shutter.retake::after{background:var(--ring);}
+
+  #canvas{display:none;}
+
+  a#dl{
+    position:absolute; opacity:0; pointer-events:none;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="logo"><span class="dot"></span>OSV</div>
+    <div class="rec" id="recLabel"><span class="blip"></span>LIVE</div>
+  </header>
+
+  <div class="stage" id="stage">
+    <video id="video" autoplay playsinline muted></video>
+    <img id="shotImg" alt="captura">
+    <div class="grid-overlay"></div>
+    <div class="corner tl"></div><div class="corner tr"></div>
+    <div class="corner bl"></div><div class="corner br"></div>
+    <div class="hint" id="hint">apasă „permite” pentru acces la cameră ↻</div>
+  </div>
+
+  <div class="filmstrip-wrap">
+    <div class="filmstrip" id="filmstrip">
+      <div class="frame f-none active" data-filter="none"><div class="swatch"></div><span>Normal</span></div>
+      <div class="frame f-bw" data-filter="grayscale(1) contrast(1.05)"><div class="swatch"></div><span>Alb-negru</span></div>
+      <div class="frame f-noir" data-filter="grayscale(1) contrast(1.5) brightness(.85)"><div class="swatch"></div><span>Noir</span></div>
+      <div class="frame f-sepia" data-filter="sepia(.75) contrast(1.05) saturate(1.2)"><div class="swatch"></div><span>Sepia</span></div>
+      <div class="frame f-vintage" data-filter="sepia(.4) saturate(1.4) contrast(.9) brightness(1.05) hue-rotate(-8deg)"><div class="swatch"></div><span>Vintage</span></div>
+      <div class="frame f-vivid" data-filter="saturate(1.8) contrast(1.15)"><div class="swatch"></div><span>Vivid</span></div>
+      <div class="frame f-neon" data-filter="saturate(2) contrast(1.3) hue-rotate(45deg)"><div class="swatch"></div><span>Neon</span></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="side-btn" id="switchBtn" title="schimbă camera">⟳</button>
+    <div class="shutter" id="shutterBtn"></div>
+    <button class="side-btn" id="dlBtn" title="salvează" style="display:none;">⬇</button>
+  </div>
+
+</div>
+
+<canvas id="canvas"></canvas>
+<a id="dl" download="osv-poza.png"></a>
+
+<script>
+const video = document.getElementById('video');
+const shotImg = document.getElementById('shotImg');
+const canvas = document.getElementById('canvas');
+const hint = document.getElementById('hint');
+const recLabel = document.getElementById('recLabel');
+const shutterBtn = document.getElementById('shutterBtn');
+const switchBtn = document.getElementById('switchBtn');
+const dlBtn = document.getElementById('dlBtn');
+const filmstrip = document.getElementById('filmstrip');
+
+let currentFilter = 'none';
+let facingMode = 'user';
+let stream = null;
+let hasShot = false;
+
+function applyFilter(el){ el.style.filter = currentFilter === 'none' ? 'none' : currentFilter; }
+
+filmstrip.addEventListener('click', (e)=>{
+  const frame = e.target.closest('.frame');
+  if(!frame) return;
+  document.querySelectorAll('.frame').forEach(f=>f.classList.remove('active'));
+  frame.classList.add('active');
+  currentFilter = frame.dataset.filter;
+  applyFilter(hasShot ? shotImg : video);
+});
+
+async function startCamera(){
+  hint.style.display = 'flex';
+  hint.textContent = 'se deschide camera…';
+  try{
+    if(stream) stream.getTracks().forEach(t=>t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode, width:{ideal:1280}, height:{ideal:1280} },
+      audio:false
+    });
+    video.srcObject = stream;
+    hint.style.display = 'none';
+    recLabel.classList.add('show');
+  }catch(err){
+    hint.style.display = 'flex';
+    hint.textContent = 'nu am acces la cameră. verifică permisiunile și că pagina rulează pe HTTPS (' + err.message + ')';
+    recLabel.classList.remove('show');
+  }
+}
+
+switchBtn.addEventListener('click', ()=>{
+  facingMode = facingMode === 'user' ? 'environment' : 'user';
+  startCamera();
+});
+
+shutterBtn.addEventListener('click', ()=>{
+  if(!hasShot){
+    // capture
+    const w = video.videoWidth, h = video.videoHeight;
+    if(!w || !h) return;
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.filter = currentFilter === 'none' ? 'none' : currentFilter;
+    ctx.translate(w,0); ctx.scale(-1,1); // mirror to match preview
+    ctx.drawImage(video, 0, 0, w, h);
+    shotImg.src = canvas.toDataURL('image/png');
+    shotImg.style.display = 'block';
+    shotImg.style.filter = 'none'; // already baked in
+    video.style.display = 'none';
+    hasShot = true;
+    shutterBtn.classList.add('retake');
+    dlBtn.style.display = 'flex';
+    recLabel.classList.remove('show');
+  } else {
+    // retake
+    shotImg.style.display = 'none';
+    video.style.display = 'block';
+    hasShot = false;
+    shutterBtn.classList.remove('retake');
+    dlBtn.style.display = 'none';
+    recLabel.classList.add('show');
+  }
+});
+
+dlBtn.addEventListener('click', ()=>{
+  const a = document.getElementById('dl');
+  a.href = shotImg.src;
+  a.download = 'osv-' + Date.now() + '.png';
+  a.click();
+});
+
+startCamera();
+</script>
+</body>
+</html>
